@@ -26,17 +26,19 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "public"
-              }
+                  "input": "public"
+              },
+		{
+		    "glob": "**/*",
+		    "input": "./node_modules/leaflet/dist/images",
+		    "output": "leaflet/"
+		}
             ],
             "styles": [
-              "src/styles.scss"
+		"src/styles.scss",
+		"./node_modules/leaflet/dist/leaflet.css"
             ],
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            }
+            "outputMode": "static",
           },
           "configurations": {
             "production": {
@@ -93,7 +95,8 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+		"src/styles.scss",
+		"./node_modules/leaflet/dist/leaflet.css"
             ]
           }
         }
