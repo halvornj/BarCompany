@@ -21,9 +21,12 @@ export class App {
 
     options: Leaflet.MapOptions = {
         layers: [
-            Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&amp;copy; OpenStreetMap contributors'
-            })
+            Leaflet.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                minZoom: 12,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>'
+            }),
+
         ],
         zoom: 15,
         center: new Leaflet.LatLng(59.912527852972985, 10.746832664717447)
@@ -79,14 +82,26 @@ out body;`)
             res.json().then((val: OverpassJson) => {
                 console.log(val);
                 //this is very stupid, just for testing the data.
-                let markers: Array<Leaflet.Marker> = val.elements.map((it: OverpassNode) => { Leaflet.marker(Leaflet.latLng(it.lat, it.lon)) });
+                const markers = val.elements.map((el) => {
+                    let node = el as OverpassNode;
+                    let marker: Leaflet.Marker = new Leaflet.Marker([node.lat, node.lon], {
+                        icon: Leaflet.icon({
+                            iconSize: [15, 25],
+                            shadowSize: [25, 50],
+                            //			    iconAnchor: [13, 0],
+                            shadowAnchor: [6, 35],
+                            iconUrl: 'assets/marker-icon.png',
+                            iconRetinaUrl: 'assets/marker-icon-2x.png',
+                            shadowUrl: 'assets/marker-shadow.png'
+                        })
+                    });
+                    node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
+                    return marker;
+                });
 
+                this.mandatoryLayers[0] = new Leaflet.LayerGroup(markers);
             });
         });
 
 }
 
-
-class OverpassBody {
-
-}
