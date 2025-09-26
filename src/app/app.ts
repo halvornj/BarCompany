@@ -89,7 +89,7 @@ out body;`)
                             iconSize: [15, 25],
                             shadowSize: [25, 50],
                             //			    iconAnchor: [13, 0],
-                            shadowAnchor: [6, 35],
+                            shadowAnchor: [7, 37],
                             iconUrl: 'assets/marker-icon.png',
                             iconRetinaUrl: 'assets/marker-icon-2x.png',
                             shadowUrl: 'assets/marker-shadow.png'
