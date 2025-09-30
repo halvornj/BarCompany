@@ -8,7 +8,7 @@ import { overpass } from 'overpass-ts';
 
 
 
-const TESTING_BB = `59.9,10.7,60.0,10.8`;
+const TESTING_BB = [59.9, 10.7, 60.0, 10.8];
 
 @Component({
     selector: 'app-root',
@@ -63,45 +63,104 @@ export class App {
     ]
 
 
+
+    constructor() {
+
+        let userPosition: Promise<GeolocationPosition | null> = GetUserPosition();
+        userPosition.then((res) => { console.log(res) });
+
+        //this is very stupid, just for testing the data.
+        let nodesPromise: Promise<Array<OverpassNode> | null> = getLocalBars(TESTING_BB);
+
+        nodesPromise.then((res: Array<OverpassNode> | null) => {
+            if (res == null) {
+                return;
+            }
+            const markers = res.map((el) => {
+                let node = el as OverpassNode;
+                let marker: Leaflet.Marker = new Leaflet.Marker([node.lat, node.lon], {
+                    icon: Leaflet.icon({
+                        iconSize: [15, 25],
+                        shadowSize: [25, 50],
+                        //			    iconAnchor: [13, 0],
+                        shadowAnchor: [7, 37],
+                        iconUrl: 'assets/marker-icon.png',
+                        iconRetinaUrl: 'assets/marker-icon-2x.png',
+                        shadowUrl: 'assets/marker-shadow.png'
+                    })
+                });
+                node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
+                return marker;
+            })
+            this.mandatoryLayers[0] = new Leaflet.LayerGroup(markers);
+        });
+
+
+
+
+    }
+
+}
+
+
+
+/*TODO this could just take a position, and construct the bounding-box.
+
+
+  
+  */
+
+async function getLocalBars(bounding_box: Array<number>): Promise<Array<OverpassNode> | null> {
+
+    const BB_STR = bounding_box.join(',');
+
     //overpass api (used for hitting openstreetmap)
-    request: Promise<Response | void> = overpass(
+    let response: Response | null = await overpass(
         `[out:json];
 (
-node["amenity"="biergarten"](${TESTING_BB});
-node["amenity"="bar"](${TESTING_BB});
-node["amenity"="pub"](${TESTING_BB});
-node["amenity"="nightclub"](${TESTING_BB});
+node["amenity"="biergarten"](${BB_STR});
+node["amenity"="bar"](${BB_STR});
+node["amenity"="pub"](${BB_STR});
+node["amenity"="nightclub"](${BB_STR});
 
 );
 (._;>;);
-out body;`)
-        .then((res: Response) => {
-            if (!res.ok) {
-                throw new ReferenceError("todo exceptions :)");
-            }// res ok
-            res.json().then((val: OverpassJson) => {
-                console.log(val);
-                //this is very stupid, just for testing the data.
-                const markers = val.elements.map((el) => {
-                    let node = el as OverpassNode;
-                    let marker: Leaflet.Marker = new Leaflet.Marker([node.lat, node.lon], {
-                        icon: Leaflet.icon({
-                            iconSize: [15, 25],
-                            shadowSize: [25, 50],
-                            //			    iconAnchor: [13, 0],
-                            shadowAnchor: [7, 37],
-                            iconUrl: 'assets/marker-icon.png',
-                            iconRetinaUrl: 'assets/marker-icon-2x.png',
-                            shadowUrl: 'assets/marker-shadow.png'
-                        })
-                    });
-                    node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
-                    return marker;
-                });
+out body;`);
+    if (response == null || !response.ok) {
+        throw new ReferenceError("todo exceptions :)");
+    }// res ok
+    const json = await response.json() as OverpassJson;
+    console.log(json);
+    if (json.elements == undefined) {
+        throw new ReferenceError("todo exceptions :)");
+    }
+    return json.elements as Array<OverpassNode>;
 
-                this.mandatoryLayers[0] = new Leaflet.LayerGroup(markers);
+}
+
+
+//this is horrible structure, and not code that sohuld be used, THIS WHOLE FILE IS JUST FOR TESTING WHAT IS POSSIBLE. NOT TO BE SHIPPED.
+/*
+  requests permission and gets user location.
+  @returns: Geolocationposition on success, null with quiet failure on non-success.
+  TODO: implement handling for missing permissions, so on.
+  */
+
+async function GetUserPosition(): Promise<GeolocationPosition | null> {
+
+    if (navigator.geolocation) {
+        return await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                maximumAge: 1000 * 600, //1000ms * 600 = 600s, 10 mins
+                timeout: 1000 * 5, //5 second timeout
+                enableHighAccuracy: false
             });
         });
+
+    } else { //TODO actually throw an exception, if this were real code.
+        console.error("browser/agent does not support geolocation.");
+    }
+    return null;
 
 }
 
