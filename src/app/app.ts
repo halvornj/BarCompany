@@ -2,13 +2,11 @@ import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Barcard } from './barcard/barcard';
 import { LeafletDirective, LeafletLayersControlDirective, LeafletLayersDirective } from '@bluehalo/ngx-leaflet';
-import * as Leaflet from 'leaflet';
+import * as L from 'leaflet';
 import type { OverpassJson, OverpassNode } from "overpass-ts";
 import { overpass } from 'overpass-ts';
 
 
-
-const TESTING_BB = [59.9, 10.7, 60.0, 10.8];
 
 @Component({
     selector: 'app-root',
@@ -18,10 +16,11 @@ const TESTING_BB = [59.9, 10.7, 60.0, 10.8];
 })
 export class App {
     protected readonly title = signal('BarCompany');
+    userPosition: L.LatLng = new L.LatLng(59.912527852972985, 10.746832664717447);
 
-    options: Leaflet.MapOptions = {
+    options: L.MapOptions = {
         layers: [
-            Leaflet.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
+            L.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
                 maxZoom: 18,
                 minZoom: 12,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>'
@@ -29,27 +28,27 @@ export class App {
 
         ],
         zoom: 15,
-        center: new Leaflet.LatLng(59.912527852972985, 10.746832664717447)
+        center: this.userPosition
     };
 
     protected readonly layersControl = {
         baseLayers: {
-            'Open Street Map': Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            'Open Street Map': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&amp;copy; OpenStreetMap contributors',
                 maxZoom: 18,
                 minZoom: 12
             }),
-            'cat': Leaflet.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
+            'cat': L.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
                 maxZoom: 18,
                 minZoom: 12,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>'
             }),
-            'esri_street': Leaflet.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            'esri_street': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
                 minZoom: 12,
                 maxZoom: 18,
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
             }),
-            'esri_wold_image': Leaflet.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            'esri_wold_image': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
             }),
         },
@@ -59,59 +58,66 @@ export class App {
     }
 
     protected mandatoryLayers = [
-        new Leaflet.LayerGroup()
+        new L.LayerGroup()
     ]
 
 
 
     constructor() {
 
-        let userPosition: Promise<GeolocationPosition | null> = GetUserPosition();
-        userPosition.then((res) => { console.log(res) });
 
-        //this is very stupid, just for testing the data.
-        let nodesPromise: Promise<Array<OverpassNode> | null> = getLocalBars(TESTING_BB);
+        //THIS is the reason why this file will not be put into anything resembling production: .then()s
+        let userPositionPromise: Promise<GeolocationPosition | null> = GetUserPosition();
+        userPositionPromise.then((res) => {
+            const userCoordinates = res ? new L.LatLng(res.coords.latitude, res.coords.longitude) : new L.LatLng(59.912527852972985, 10.746832664717447); //res or default
 
-        nodesPromise.then((res: Array<OverpassNode> | null) => {
-            if (res == null) {
-                return;
-            }
-            const markers = res.map((el) => {
-                let node = el as OverpassNode;
-                let marker: Leaflet.Marker = new Leaflet.Marker([node.lat, node.lon], {
-                    icon: Leaflet.icon({
-                        iconSize: [15, 25],
-                        shadowSize: [25, 50],
-                        //			    iconAnchor: [13, 0],
-                        shadowAnchor: [7, 37],
-                        iconUrl: 'assets/marker-icon.png',
-                        iconRetinaUrl: 'assets/marker-icon-2x.png',
-                        shadowUrl: 'assets/marker-shadow.png'
-                    })
-                });
-                node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
-                return marker;
-            })
-            this.mandatoryLayers[0] = new Leaflet.LayerGroup(markers);
-        });
+            this.userPosition = userCoordinates;
 
+            //this is very stupid, just for testing the data.
+            let nodesPromise: Promise<Array<OverpassNode> | null> = getLocalBars(userCoordinates);
+
+            nodesPromise.then((res: Array<OverpassNode> | null) => {
+                if (res == null) {
+                    return;
+                }
+                const markers = res.map((el) => {
+                    let node = el as OverpassNode;
+                    let marker: L.Marker = new L.Marker([node.lat, node.lon], {
+                        icon: L.icon({
+                            iconSize: [15, 25],
+                            shadowSize: [25, 50],
+                            //			    iconAnchor: [13, 0],
+                            shadowAnchor: [7, 37],
+                            iconUrl: 'assets/marker-icon.png',
+                            iconRetinaUrl: 'assets/marker-icon-2x.png',
+                            shadowUrl: 'assets/marker-shadow.png'
+                        })
+                    });
+                    node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
+                    return marker;
+                })
+                this.mandatoryLayers[0] = new L.LayerGroup(markers);
+            });
+
+
+        })
 
 
 
     }
-
 }
 
 
 
-/*TODO this could just take a position, and construct the bounding-box.
-
-
-  
+/*
+  TODO docstr
   */
 
-async function getLocalBars(bounding_box: Array<number>): Promise<Array<OverpassNode> | null> {
-
+async function getLocalBars(centerLocation: L.LatLng): Promise<Array<OverpassNode> | null> {
+    //this is the difference, in degrees of lat/lon, between the user and the edge of where to fetch bars. They shold probably just be fetched in a circle.
+    const BOX_SZ_DG: number = 0.1;
+    //array of [left-edge, bottom-edge, right-edge, top-edge. used for join, more efficient to do both in a reduce/fold]
+    const bounding_box: number[] = [centerLocation.lat - BOX_SZ_DG, centerLocation.lng - BOX_SZ_DG, centerLocation.lat + BOX_SZ_DG, centerLocation.lng + BOX_SZ_DG]; //jesus that is ugly.
     const BB_STR = bounding_box.join(',');
 
     //overpass api (used for hitting openstreetmap)
@@ -147,7 +153,6 @@ out body;`);
   */
 
 async function GetUserPosition(): Promise<GeolocationPosition | null> {
-
     if (navigator.geolocation) {
         return await new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -164,3 +169,50 @@ async function GetUserPosition(): Promise<GeolocationPosition | null> {
 
 }
 
+
+/*
+  I LOVE RECURSION
+  TODO docs
+  */
+function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>, target_length: number, center: L.LatLng, search_radius: number = 500): Array<OverpassNode> {
+
+    if (found.length === target_length) { return found }
+    if (nodes.length === 0) { return found }
+
+    let current_node: OverpassNode = nodes[0];
+    const new_center = new L.LatLng(current_node.lat, current_node.lon);
+
+    if (calculateDistance(center, new_center) < search_radius) {
+        found.push(nodes[0]);
+        return findNCloseNodes(nodes.slice(1), found, target_length, new_center, search_radius);
+    } else {
+        return findNCloseNodes(nodes.slice(1), found, target_length, center, search_radius);
+    }
+}
+
+/*
+  calculates distance between two points, a and b.
+  
+  stole this from my own old code from 3 years ago.
+  */
+function calculateDistance(a: L.LatLng, b: L.LatLng): number {
+    const toRadian = (angle: number) => (Math.PI / 180) * angle;
+    const distance = (_a: number, _b: number) => (Math.PI / 180) * (_a - _b);
+    const RADIUS_OF_EARTH_IN_KM = 6371;
+
+    const dLat = distance(a.lat, b.lat);
+    const dLon = distance(b.lng, b.lng);
+
+    var lat1 = toRadian(a.lat);
+    var lat2 = toRadian(b.lat);
+
+    // Haversine Formula
+    const hav =
+        Math.pow(Math.sin(dLat / 2), 2) +
+        Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
+
+    const c = 2 * Math.asin(Math.sqrt(hav));
+
+    return RADIUS_OF_EARTH_IN_KM * c;
+
+}
