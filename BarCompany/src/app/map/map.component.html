@@ -1,0 +1,53 @@
+<div class="map-wrapper">
+  <div class="map-controls">
+    <div class="controls-section">
+      <h2>🍺 Bar Crawler</h2>
+      <div class="bar-count-info">
+        Found {{ currentBars.length }} bars in current area
+      </div>
+    </div>
+    
+    <div class="controls-section">
+      <button (click)="refreshBars()" class="refresh-btn" title="Refresh bar locations for current map view">
+        🔄 Refresh Bars
+      </button>
+    </div>
+  </div>
+
+  <div class="crawl-controls">
+    <div class="crawl-input-section">
+      <label for="numberOfBars">Number of bars for crawl:</label>
+      <input 
+        type="number" 
+        id="numberOfBars" 
+        [(ngModel)]="numberOfBars" 
+        min="2" 
+        [max]="currentBars.length || 10"
+        class="bar-count-input"
+      >
+      <button 
+        (click)="planBarCrawl()" 
+        class="plan-btn"
+        [disabled]="currentBars.length === 0 || numberOfBars < 2 || numberOfBars > currentBars.length"
+      >
+        🗺️ Plan Bar Crawl
+      </button>
+    </div>
+
+    <div class="loading-info" *ngIf="currentBars.length === 0">
+      <p>🔍 Loading bars in this area... Try zooming to a city center or refresh if bars don't appear.</p>
+    </div>
+
+    <div class="route-info" *ngIf="currentRoute">
+      <div class="route-stats">
+        <strong>📍 {{ getRouteInfo() }}</strong>
+      </div>
+      <div class="route-actions">
+        <button (click)="showAllBars()" class="show-all-btn">Show All Bars</button>
+        <button (click)="clearRoute()" class="clear-route-btn">Clear Route</button>
+      </div>
+    </div>
+  </div>
+
+  <div #mapContainer class="map-container"></div>
+</div>
