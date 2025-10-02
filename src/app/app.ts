@@ -222,7 +222,7 @@ function generateRouteFromPoint(start: L.LatLng, allNodes: Array<OverpassNode>) 
   I LOVE RECURSION
   TODO docs
   */
-function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>, target_length: number, center: L.LatLng, search_radius: number = 0.5): Array<OverpassNode> {
+function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>, target_length: number, center: L.LatLng, search_radius: number = 0.2): Array<OverpassNode> {
 
     if (found.length === target_length) {
         console.debug("found close nodes: ")
@@ -235,6 +235,8 @@ function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>,
     const new_center = new L.LatLng(current_node.lat, current_node.lon);
 
     if (calculateDistance(center, new_center) < search_radius && !found.includes(current_node)) {
+        console.debug(`new: ${nodes[0]}`);
+
         found.push(nodes[0]);
         return findNCloseNodes(nodes.slice(1), found, target_length, new_center, search_radius);
     } else {
