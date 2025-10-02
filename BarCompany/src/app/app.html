@@ -1,0 +1,89 @@
+<!-- BarCompany Map Application -->
+
+<style>
+  :host {
+    --bright-blue: oklch(51.01% 0.274 263.83);
+    --electric-violet: oklch(53.18% 0.28 296.97);
+    --french-violet: oklch(47.66% 0.246 305.88);
+    --vivid-pink: oklch(69.02% 0.277 332.77);
+    --hot-red: oklch(61.42% 0.238 15.34);
+    --orange-red: oklch(63.32% 0.24 31.68);
+
+    --gray-900: oklch(19.37% 0.006 300.98);
+    --gray-700: oklch(36.98% 0.014 302.71);
+    --gray-400: oklch(70.9% 0.015 304.04);
+
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol";
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .main {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .header-section {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .header-section h1 {
+    font-size: 3rem;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+
+  .header-section p {
+    font-size: 1.2rem;
+    color: var(--gray-700);
+    margin: 0;
+  }
+
+  .map-section {
+    width: 100%;
+    margin: 0 auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .main {
+      padding: 1rem;
+    }
+    
+    .header-section h1 {
+      font-size: 2rem;
+    }
+    
+    .header-section p {
+      font-size: 1rem;
+    }
+  }
+</style>
+
+<main class="main">
+  <div class="content">
+    <div class="header-section">
+      <h1>🍺 BarCompany Crawler</h1>
+      <p>Find bars and plan your perfect bar crawl route anywhere in the world</p>
+    </div>
+    
+    <!-- Router outlet for navigation -->
+    <router-outlet />
+  </div>
+</main>
