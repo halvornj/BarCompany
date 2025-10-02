@@ -6,6 +6,9 @@
      [leafletOptions]="options"
      [leafletLayers]="mandatoryLayers"
      [leafletLayersControl]="layersControl"
->
+
+          (leafletMapReady)="onMapReady($event)">
+
+     >
 </div>
 

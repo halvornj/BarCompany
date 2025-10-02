@@ -1,11 +1,15 @@
-import { Component, signal } from '@angular/core';
+import { Component, Directive, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Barcard } from './barcard/barcard';
 import { LeafletDirective, LeafletLayersControlDirective, LeafletLayersDirective } from '@bluehalo/ngx-leaflet';
 import * as L from 'leaflet';
 import type { OverpassJson, OverpassNode } from "overpass-ts";
 import { overpass } from 'overpass-ts';
+import 'leaflet-routing-machine';
+import { OverpassError } from 'overpass-ts/dist/common';
 
+
+const AMOUNT_OF_BARS_PER_ROUTE = 5; //c-style define, this should be gotten from user input at some point. just for testing.
 
 
 @Component({
@@ -16,7 +20,8 @@ import { overpass } from 'overpass-ts';
 })
 export class App {
     protected readonly title = signal('BarCompany');
-    userPosition: L.LatLng = new L.LatLng(59.912527852972985, 10.746832664717447);
+    userPosition: L.LatLng = new L.LatLng(59.91126206884584, 10.744979731139079);
+
 
     options: L.MapOptions = {
         layers: [
@@ -63,8 +68,11 @@ export class App {
 
 
 
-    constructor() {
 
+
+    onMapReady(map: L.Map) {
+
+        console.log("map ready")
 
         //THIS is the reason why this file will not be put into anything resembling production: .then()s
         let userPositionPromise: Promise<GeolocationPosition | null> = GetUserPosition();
@@ -93,18 +101,35 @@ export class App {
                             shadowUrl: 'assets/marker-shadow.png'
                         })
                     });
-                    node.tags ? marker.bindPopup(node.tags["name"]) : console.error("overpass recieved node with no tags");
+
+                    if (node.tags == null) {
+                        throw new ReferenceError("overpass returned a node with no tags)")
+                    }
+
+
+                    marker.bindPopup(node.tags["name"]);
+                    marker.addEventListener('click', (() => {
+                        let control = generateRouteFromPoint(new L.LatLng(node.lat, node.lon), res);
+                        control.addTo(map);
+                        console.debug('removing marker layer?')
+                        this.mandatoryLayers[0] = new L.LayerGroup();
+
+                    }));
                     return marker;
                 })
                 this.mandatoryLayers[0] = new L.LayerGroup(markers);
+
             });
+
+
+
 
 
         })
 
 
-
     }
+
 }
 
 
@@ -169,20 +194,47 @@ async function GetUserPosition(): Promise<GeolocationPosition | null> {
 
 }
 
+/*
+  todo docs
+  NOTE: this def does not return a layergroup, return whatever openRouteService gives (or convert to something you can slap onto Leaflet
+*/
+function generateRouteFromPoint(start: L.LatLng, allNodes: Array<OverpassNode>) {
+
+    const nodes: Array<OverpassNode> = findNCloseNodes(allNodes, [], AMOUNT_OF_BARS_PER_ROUTE, start);
+
+    const markers: Array<L.LatLng> = nodes.map((el) => { return new L.LatLng(el.lat, el.lon) })
+
+    return L.Routing.control({
+        waypoints: markers,
+
+        router: L.routing.osrmv1({
+            language: 'en',
+            profile: 'foot'
+        })
+    })
+
+}
+
+
+
 
 /*
   I LOVE RECURSION
   TODO docs
   */
-function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>, target_length: number, center: L.LatLng, search_radius: number = 500): Array<OverpassNode> {
+function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>, target_length: number, center: L.LatLng, search_radius: number = 0.5): Array<OverpassNode> {
 
-    if (found.length === target_length) { return found }
-    if (nodes.length === 0) { return found }
+    if (found.length === target_length) {
+        console.debug("found close nodes: ")
+        console.debug(found);
+        return found;
+    }
+    if (nodes.length === 0) { return found; }
 
     let current_node: OverpassNode = nodes[0];
     const new_center = new L.LatLng(current_node.lat, current_node.lon);
 
-    if (calculateDistance(center, new_center) < search_radius) {
+    if (calculateDistance(center, new_center) < search_radius && !found.includes(current_node)) {
         found.push(nodes[0]);
         return findNCloseNodes(nodes.slice(1), found, target_length, new_center, search_radius);
     } else {
@@ -191,7 +243,7 @@ function findNCloseNodes(nodes: Array<OverpassNode>, found: Array<OverpassNode>,
 }
 
 /*
-  calculates distance between two points, a and b.
+  calculates distance between two points, a and b. returns distance in kilometers
   
   stole this from my own old code from 3 years ago.
   */
@@ -212,6 +264,8 @@ function calculateDistance(a: L.LatLng, b: L.LatLng): number {
         Math.pow(Math.sin(dLon / 2), 2) * Math.cos(lat1) * Math.cos(lat2);
 
     const c = 2 * Math.asin(Math.sqrt(hav));
+
+    console.debug(RADIUS_OF_EARTH_IN_KM * c);
 
     return RADIUS_OF_EARTH_IN_KM * c;
 
